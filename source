@@ -1,0 +1,207 @@
+-- Steal a Brainrot 增强助手脚本
+-- 由 CG/codecat 创作
+-- 这是一个教育用途的脚本，用于优化《Steal a Brainrot》的合法玩法
+-- 功能：自动收集现金、显示基地状态、提示 Bloodmoon 事件、移动优化提示
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+-- 配置
+local AUTO_COLLECT_INTERVAL = 3 -- 自动收集现金间隔（秒）
+local CURRENCY_NAME = "Brainrots" -- 货币名称
+local BLOODMOON_NPC = "Ballerina Cappucina" -- Bloodmoon 事件 NPC
+local BASE_DEFENSE_THRESHOLD = 50 -- 基地防御值警告阈值（假设值）
+
+-- 创建远程事件
+local CollectCashEvent = Instance.new("RemoteEvent")
+CollectCashEvent.Name = "CollectCash"
+CollectCashEvent.Parent = ReplicatedStorage
+
+-- 服务器端：处理现金收集
+local function onCollectCash(player)
+    if not player then return end
+    
+    local leaderstats = player:FindFirstChild("leaderstats")
+    if leaderstats and leaderstats:FindFirstChild(CURRENCY_NAME) then
+        -- 模拟合法现金收集（需适配游戏实际机制）
+        leaderstats[CURRENCY_NAME].Value = leaderstats[CURRENCY_NAME].Value + 50
+        print(player.Name .. " 收集了 50 Brainrots")
+    end
+end
+
+CollectCashEvent.OnServerEvent:Connect(onCollectCash)
+
+-- 客户端：GUI 和功能
+local function setupClient()
+    local player = Players.LocalPlayer
+    local playerGui = player:WaitForChild("PlayerGui")
+    
+    -- 创建 GUI
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "BrainrotAssistantGUI"
+    screenGui.Parent = playerGui
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 300, 0, 250)
+    frame.Position = UDim2.new(0.5, -150, 0.1, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Text = "Brainrot 助手 by CG/codecat"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.SourceSansBold
+    title.TextSize = 20
+    title.Parent = frame
+    
+    local collectButton = Instance.new("TextButton")
+    collectButton.Size = UDim2.new(0, 120, 0, 40)
+    collectButton.Position = UDim2.new(0.5, -60, 0.2, 0)
+    collectButton.Text = "收集现金"
+    collectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    collectButton.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+    collectButton.Parent = frame
+    
+    local baseInfo = Instance.new("TextLabel")
+    baseInfo.Size = UDim2.new(1, 0, 0, 80)
+    baseInfo.Position = UDim2.new(0, 0, 0.35, 0)
+    baseInfo.Text = "加载基地信息..."
+    baseInfo.TextColor3 = Color3.fromRGB(255, 255, 255)
+    baseInfo.BackgroundTransparency = 1
+    baseInfo.Font = Enum.Font.SourceSans
+    baseInfo.TextSize = 16
+    baseInfo.TextWrapped = true
+    baseInfo.Parent = frame
+    
+    local bloodmoonTimer = Instance.new("TextLabel")
+    bloodmoonTimer.Size = UDim2.new(1, 0, 0, 30)
+    bloodmoonTimer.Position = UDim2.new(0, 0, 0.65, 0)
+    bloodmoonTimer.Text = "Bloodmoon: 正在查找..."
+    bloodmoonTimer.TextColor3 = Color3.fromRGB(255, 0, 0)
+    bloodmoonTimer.BackgroundTransparency = 1
+    bloodmoonTimer.Font = Enum.Font.SourceSansBold
+    bloodmoonTimer.TextSize = 18
+    bloodmoonTimer.Parent = frame
+    
+    local moveTip = Instance.new("TextLabel")
+    moveTip.Size = UDim2.new(1, 0, 0, 30)
+    moveTip.Position = UDim2.new(0, 0, 0.8, 0)
+    moveTip.Text = "移动提示: 按 Shift 冲刺"
+    moveTip.TextColor3 = Color3.fromRGB(0, 255, 0)
+    moveTip.BackgroundTransparency = 1
+    moveTip.Font = Enum.Font.SourceSans
+    moveTip.TextSize = 16
+    moveTip.Parent = frame
+    
+    -- 自动收集现金
+    local function autoCollect()
+        while true do
+            CollectCashEvent:FireServer()
+            wait(AUTO_COLLECT_INTERVAL)
+        end
+    end
+    spawn(autoCollect)
+    
+    -- 手动收集按钮
+    collectButton.MouseButton1Click:Connect(function()
+        CollectCashEvent:FireServer()
+    end)
+    
+    -- 更新基地信息
+    local function updateBaseInfo()
+        local base = workspace:FindFirstChild(player.Name .. "'s Base")
+        if base then
+            local brainrots = base:FindFirstChild("Brainrots")
+            local defense = base:FindFirstChild("Defense") -- 假设基地有防御值
+            local info = "基地状态:\n"
+            if brainrots then
+                info = info .. "Brainrots: " .. #brainrots:GetChildren() .. "\n"
+            else
+                info = info .. "Brainrots: 未找到\n"
+            end
+            if defense then
+                info = info .. "防御值: " .. defense.Value
+                if defense.Value < BASE_DEFENSE_THRESHOLD then
+                    info = info .. " (警告: 防御值过 realiza!"
+                end
+            else
+                info = info .. "防御值: 未找到"
+            end
+            baseInfo.Text = info
+        else
+            baseInfo.Text = "未找到你的基地"
+        end
+    end
+    
+    -- 更新 Bloodmoon 倒计时
+    local function updateBloodmoonTimer()
+        local npc = workspace:FindFirstChild(BLOODMOON_NPC)
+        if npc then
+            local timer = npc:FindFirstChild("BloodmoonTimer") -- 假设 NPC 有计时器
+            if timer then
+                bloodmoonTimer.Text = "Bloodmoon: " .. timer.Value .. " 秒"
+            else
+                bloodmoonTimer.Text = "Bloodmoon: 未找到计时器"
+            end
+        else
+            bloodmoonTimer.Text = "Bloodmoon: 未找到 NPC"
+        end
+    end
+    
+    -- 移动优化提示
+    local function updateMoveTip()
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            moveTip.Text = "移动提示: 正在冲刺!"
+        else
+            moveTip.Text = "移动提示: 按 Shift 冲刺"
+        end
+    end
+    
+    -- 定期更新
+    RunService.Heartbeat:Connect(function()
+        updateBaseInfo()
+        updateBloodmoonTimer()
+        updateMoveTip()
+    end)
+end
+
+-- 初始化玩家
+Players.PlayerAdded:Connect(function(player)
+    local leaderstats = Instance.new("Folder")
+    leaderstats.Name = "leaderstats"
+    leaderstats.Parent = player
+    
+    local brainrots = Instance.new("IntValue")
+    brainrots.Name = CURRENCY_NAME
+    brainrots.Value = 0
+    brainrots.Parent = leaderstats
+    
+    if player == Players.LocalPlayer then
+        setupClient()
+    end
+end)
+
+-- 每隔 5 秒生成一个新的 Brainrot（用于测试）
+local function spawnBrainrotsLoop()
+    while true do
+        local brainrotsFolder = workspace:FindFirstChild("Brainrots")
+        if brainrotsFolder then
+            local brainrotPart = Instance.new("Part")
+            brainrotPart.Name = "Brainrot"
+            brainrotPart.Size = Vector3.new(2, 2, 2)
+            brainrotPart.Position = Vector3.new(math.random(-50, 50), 5, math.random(-50, 50))
+            brainrotPart.BrickColor = BrickColor.new("Really red")
+            brainrotPart.Anchored = true
+            brainrotPart.Parent = brainrotsFolder
+        end
+        wait(5)
+    end
+end
+spawn(spawnBrainrotsLoop)
+
+print("Steal a Brainrot 增强助手 by CG/codecat 加载成功！")
